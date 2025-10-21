@@ -1,46 +1,56 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import React, { useEffect, useState } from 'react';
+import { getUsers } from '../api';
 
-export default function UserList({ refreshFlag }) {
+export default function UserList() {
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchUsers = async () => {
+  const fetch = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get("http://localhost:3000/users");
-      setUsers(res.data);
+      const res = await getUsers();
+      // assume backend returns array in res.data
+      setUsers(res.data || []);
     } catch (err) {
-      console.error(err);
-      setError("Không thể lấy danh sách user.");
+      setError(err.message || 'Lỗi khi lấy dữ liệu');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, [refreshFlag]); // refresh khi refreshFlag thay đổi
+  useEffect(() => { fetch(); }, []);
 
-  if (loading) return <div>Đang tải danh sách...</div>;
-  if (error) return <div className="error">{error}</div>;
+  if (loading) return <div>Loading users...</div>;
+  if (error) return <div style={{color:'red'}}>Error: {error}</div>;
 
   return (
-    <div className="card list">
-      <h3>Danh sách user</h3>
+    <div>
+      <h2>Danh sách users</h2>
       {users.length === 0 ? (
-        <p>Chưa có user nào.</p>
+        <div>Chưa có user nào.</div>
       ) : (
-        <ul>
-          {users.map((u) => (
-            <li key={u._id || u.id}>
-              <strong>{u.name}</strong> — {u.email}
-            </li>
-          ))}
-        </ul>
+        <table style={{width:'100%', borderCollapse:'collapse'}}>
+          <thead>
+            <tr>
+              <th style={{border:'1px solid #ddd', padding:'8px'}}>ID</th>
+              <th style={{border:'1px solid #ddd', padding:'8px'}}>Name</th>
+              <th style={{border:'1px solid #ddd', padding:'8px'}}>Email</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map(u => (
+              <tr key={u.id || u._id}>
+                <td style={{border:'1px solid #ddd', padding:'8px'}}>{u.id ?? u._id ?? '-'}</td>
+                <td style={{border:'1px solid #ddd', padding:'8px'}}>{u.name}</td>
+                <td style={{border:'1px solid #ddd', padding:'8px'}}>{u.email}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
+      <button onClick={fetch} style={{marginTop:12}}>Refresh</button>
     </div>
   );
 }
