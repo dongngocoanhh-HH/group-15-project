@@ -1,24 +1,11 @@
-import React, { useState } from "react";
-import UserList from "./components/UserList";
-import AddUser from "./components/AddUser";
-import "./App.css";
+import React from 'react';
+import UserList from './components/UserList';
 
 function App() {
-  // refreshFlag để ép UserList fetch lại khi có user mới
-  const [refreshFlag, setRefreshFlag] = useState(0);
-
-  const handleUserAdded = (newUser) => {
-    // tăng flag để re-fetch
-    setRefreshFlag((f) => f + 1);
-  };
-
   return (
-    <div className="container">
-      <h1>Quản lý Users</h1>
-      <div className="grid">
-        <AddUser onUserAdded={handleUserAdded} />
-        <UserList refreshFlag={refreshFlag} />
-      </div>
+    <div style={{ fontFamily: 'Arial, sans-serif', padding: 20 }}>
+      <h1>User CRUD (React + Axios)</h1>
+      <UserList />
     </div>
   );
 }
