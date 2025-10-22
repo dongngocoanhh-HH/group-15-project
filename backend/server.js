@@ -1,18 +1,36 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
+const path = require('path');
+
+const userRoutes = require('./routes/user');
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
-// Kết nối MongoDB Atlas
-mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log('✅ Connected to MongoDB Atlas'))
-.catch((err) => console.error('❌ MongoDB connection error:', err));
-
-// Import router
-const userRouter = require('./routes/user');
-app.use('/api/users', userRouter);
-
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/myapp';
+
+// Thực hiện kết nối MongoDB rồi start server trong callback .then
+mongoose.connect(MONGO_URI)
+  .then(() => {
+    console.log('✅ MongoDB connected');
+
+    // gắn routes API
+    app.use('/', userRoutes);
+
+    // route root để test nhanh
+    app.get('/', (req, res) => {
+      res.send('🚀 User API is running. Try GET /users');
+    });
+
+    // start server
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ Server running on http://localhost:${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('❌ MongoDB connection error:', err);
+  });
