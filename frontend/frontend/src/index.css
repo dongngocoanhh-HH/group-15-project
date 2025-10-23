@@ -1,0 +1,23 @@
+body {
+  margin: 0;
+  padding: 0;
+  background: #f8f9fb;
+  color: #111;
+}
+input {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+button {
+  border: 1px solid #007bff;
+  background: #007bff;
+  color: white;
+  border-radius: 4px;
+}
+button[type="button"] {
+  background: #6c757d;
+  border-color: #6c757d;
+}
+table th, table td {
+  padding: 8px;
+}
