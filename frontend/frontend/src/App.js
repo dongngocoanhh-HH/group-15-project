@@ -7,6 +7,7 @@ import Signup from './components/Signup';
 import Login from './components/Login';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
+import Moderator from './pages/Moderator';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 
@@ -90,9 +91,16 @@ function AppContent() {
               <Button color="inherit" component={Link} to="/forgot-password">Quên mật khẩu</Button>
               <Button color="inherit" component={Link} to="/reset-password">Đổi mật khẩu</Button>
 
+              {/* Admin-only button */}
               {me?.role === 'admin' && (
-                <Button color="inherit" component={Link} to="/admin">Admin</Button>
+                <Button color="inherit" component={Link} to="/admin">👑 Admin</Button>
               )}
+              
+              {/* Moderator button */}
+              {(me?.role === 'moderator' || me?.role === 'admin') && (
+                <Button color="inherit" component={Link} to="/moderator">🛡️ Moderator</Button>
+              )}
+              
               <Button color="inherit" onClick={handleLogout}>Đăng xuất</Button>
             </>
           )}
@@ -109,6 +117,10 @@ function AppContent() {
         <Route
           path="/admin"
           element={me?.role === 'admin' ? <Admin /> : <Navigate to="/login" replace />}
+        />
+        <Route
+          path="/moderator"
+          element={(me?.role === 'moderator' || me?.role === 'admin') ? <Moderator /> : <Navigate to="/login" replace />}
         />
       </Routes>
     </>

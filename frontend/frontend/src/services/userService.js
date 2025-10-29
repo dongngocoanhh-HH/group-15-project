@@ -98,3 +98,72 @@ export async function uploadAvatar(file, token = getAccessToken()) {
     return { success: false, message: 'Lỗi kết nối server' };
   }
 }
+
+/** RBAC APIs */
+export async function updateUserRole(userId, role, permissions = [], token = getAccessToken()) {
+  try {
+    const res = await fetch(`${API_URL}/api/users/${userId}/role`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      credentials: 'include',
+      body: JSON.stringify({ role, permissions }),
+    });
+    const data = await readJson(res);
+    if (!res.ok) return { success: false, message: data?.message || 'Lỗi server' };
+    return { success: true, message: data?.message || 'Cập nhật role thành công', user: data.user };
+  } catch {
+    return { success: false, message: 'Lỗi kết nối server' };
+  }
+}
+
+export async function toggleUserStatus(userId, token = getAccessToken()) {
+  try {
+    const res = await fetch(`${API_URL}/api/users/${userId}/toggle-status`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
+    });
+    const data = await readJson(res);
+    if (!res.ok) return { success: false, message: data?.message || 'Lỗi server' };
+    return { success: true, message: data?.message || 'Đã thay đổi trạng thái', user: data.user };
+  } catch {
+    return { success: false, message: 'Lỗi kết nối server' };
+  }
+}
+
+export async function getUserStats(token = getAccessToken()) {
+  try {
+    const res = await fetch(`${API_URL}/api/users/stats`, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
+    });
+    const data = await readJson(res);
+    if (!res.ok) return { success: false, message: data?.message || 'Lỗi server' };
+    return { success: true, stats: data.stats };
+  } catch {
+    return { success: false, message: 'Lỗi kết nối server' };
+  }
+}
+
+export async function getManagedUsers(filters = {}, token = getAccessToken()) {
+  try {
+    const params = new URLSearchParams();
+    if (filters.role) params.append('role', filters.role);
+    if (filters.isActive !== undefined) params.append('isActive', filters.isActive);
+    if (filters.search) params.append('search', filters.search);
+
+    const url = `${API_URL}/api/users/managed${params.toString() ? '?' + params.toString() : ''}`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
+    });
+    const data = await readJson(res);
+    if (!res.ok) return { success: false, message: data?.message || 'Lỗi server' };
+    return { success: true, users: data.users || [] };
+  } catch {
+    return { success: false, message: 'Lỗi kết nối server' };
+  }
+}
