@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TextField, Button, Typography, Box, Alert } from '@mui/material';
-import { login } from '../services/authService';
+import { login, getUser } from '../services/authService';
 
 export default function Login() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [msg, setMsg] = useState('');
@@ -12,10 +14,21 @@ export default function Login() {
     e.preventDefault();
     setMsg(''); setErr(false);
     const res = await login({ email, password });
-    if (res.success && res.token) {
-      localStorage.setItem('token', res.token);
-      setErr(false); setMsg('Đăng nhập thành công!');
-      window.location.href = '/profile';
+    if (res.success && res.accessToken && res.refreshToken) {
+      // Token đã được lưu tự động trong authService
+      setErr(false); 
+      setMsg('Đăng nhập thành công!');
+      
+      // Lấy thông tin user để check role
+      const user = getUser();
+      
+      // Chuyển hướng ngay lập tức (không cần setTimeout)
+      // Navigate sẽ trigger useEffect trong App.js để load lại user state
+      if (user && user.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/profile', { replace: true });
+      }
     } else {
       setErr(true);
       setMsg(res.message || 'Đăng nhập thất bại');

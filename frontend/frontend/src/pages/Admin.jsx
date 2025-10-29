@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { adminGetUsers, adminDeleteUser } from '../services/userService';
+import { getAccessToken } from '../services/authService';
 
 export default function Admin() {
   const [users, setUsers] = useState([]);
@@ -13,21 +14,23 @@ export default function Admin() {
   const [msg, setMsg] = useState(null);
   const [err, setErr] = useState(null);
 
-  const token = localStorage.getItem('token');
-
   async function load() {
     setLoading(true);
     setErr(null); setMsg(null);
     try {
-      const res = await adminGetUsers(token);
+      // Không cần truyền token vì adminGetUsers đã có default parameter
+      const res = await adminGetUsers();
+      console.log('Admin - adminGetUsers response:', res); // DEBUG
       if (!res.success) {
         setErr(res.message || 'Không tải được danh sách user');
         setUsers([]);
       } else {
         const list = Array.isArray(res.users) ? res.users : [];
+        console.log('Admin - users list:', list); // DEBUG
         setUsers(list);
       }
-    } catch {
+    } catch (error) {
+      console.error('Admin - load error:', error); // DEBUG
       setErr('Lỗi kết nối server');
       setUsers([]);
     } finally {
@@ -40,9 +43,10 @@ export default function Admin() {
   const handleDelete = async (id) => {
     if (!window.confirm('Xóa tài khoản này?')) return;
     try {
-      const res = await adminDeleteUser(id, token);
+      // Không cần truyền token vì adminDeleteUser đã có default parameter
+      const res = await adminDeleteUser(id);
       if (!res.success) return setErr(res.message || 'Xóa thất bại');
-      setUsers(prev => prev.filter(u => String(u._id) !== String(id)));
+      setUsers(prev => prev.filter(u => String(u._id) !== String(id) && String(u.id) !== String(id)));
       setMsg('Đã xóa user');
     } catch {
       setErr('Lỗi kết nối server');
@@ -76,13 +80,13 @@ export default function Admin() {
             </TableHead>
             <TableBody>
               {users.map((u, idx) => (
-                <TableRow key={u._id || idx}>
+                <TableRow key={u.id || u._id || idx}>
                   <TableCell>{idx + 1}</TableCell>
                   <TableCell>{u.name || '-'}</TableCell>
                   <TableCell>{u.email}</TableCell>
                   <TableCell>{u.role || 'user'}</TableCell>
                   <TableCell align="right">
-                    <IconButton color="error" onClick={() => handleDelete(u._id)} title="Xóa">
+                    <IconButton color="error" onClick={() => handleDelete(u.id || u._id)} title="Xóa">
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>

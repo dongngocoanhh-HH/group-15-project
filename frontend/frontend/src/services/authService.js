@@ -6,17 +6,59 @@ async function readJson(res) {
   try { return JSON.parse(text || '{}'); } catch { return {}; }
 }
 
+// --- Token Management ---
+export function getAccessToken() {
+  return localStorage.getItem('accessToken');
+}
+
+export function getRefreshToken() {
+  return localStorage.getItem('refreshToken');
+}
+
+export function setTokens(accessToken, refreshToken) {
+  localStorage.setItem('accessToken', accessToken);
+  localStorage.setItem('refreshToken', refreshToken);
+}
+
+export function clearTokens() {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+}
+
+export function saveUser(user) {
+  localStorage.setItem('user', JSON.stringify(user));
+}
+
+export function getUser() {
+  const user = localStorage.getItem('user');
+  return user ? JSON.parse(user) : null;
+}
+
 // --- Auth ---
-export async function signup({ email, password }) {
+export async function signup({ email, password, name }) {
   try {
     const res = await fetch(`${API_URL}/api/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, name }),
     });
     const data = await readJson(res);
     if (!res.ok) return { success: false, message: data?.message || 'Lỗi server' };
-    return { success: true, token: data.token, message: data.message || 'Đăng ký thành công' };
+    
+    // Lưu tokens và user info
+    if (data.accessToken && data.refreshToken) {
+      setTokens(data.accessToken, data.refreshToken);
+      if (data.user) saveUser(data.user);
+    }
+    
+    return { 
+      success: true, 
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      user: data.user,
+      message: data.message || 'Đăng ký thành công' 
+    };
   } catch {
     return { success: false, message: 'Lỗi kết nối server' };
   }
@@ -31,9 +73,83 @@ export async function login({ email, password }) {
     });
     const data = await readJson(res);
     if (!res.ok) return { success: false, message: data?.message || 'Lỗi server' };
-    return { success: true, token: data.token, message: data.message || 'Đăng nhập thành công' };
+    
+    // Lưu tokens và user info
+    if (data.accessToken && data.refreshToken) {
+      setTokens(data.accessToken, data.refreshToken);
+      if (data.user) saveUser(data.user);
+    }
+    
+    return { 
+      success: true, 
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      user: data.user,
+      message: data.message || 'Đăng nhập thành công' 
+    };
   } catch {
     return { success: false, message: 'Lỗi kết nối server' };
+  }
+}
+
+// --- Refresh Token ---
+export async function refreshAccessToken() {
+  try {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      return { success: false, message: 'Không có refresh token' };
+    }
+
+    const res = await fetch(`${API_URL}/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    const data = await readJson(res);
+    
+    if (!res.ok) {
+      // Refresh token hết hạn hoặc không hợp lệ
+      clearTokens();
+      return { success: false, message: data?.message || 'Refresh token không hợp lệ' };
+    }
+    
+    // Lưu access token mới
+    if (data.accessToken) {
+      localStorage.setItem('accessToken', data.accessToken);
+      if (data.user) saveUser(data.user);
+    }
+    
+    return { 
+      success: true, 
+      accessToken: data.accessToken,
+      user: data.user,
+      message: 'Token đã được làm mới' 
+    };
+  } catch {
+    return { success: false, message: 'Lỗi kết nối server' };
+  }
+}
+
+// --- Logout ---
+export async function logout() {
+  try {
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      // Gọi API để revoke token trên server
+      await fetch(`${API_URL}/api/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+    }
+    
+    // Xóa tokens từ localStorage
+    clearTokens();
+    return { success: true, message: 'Đăng xuất thành công' };
+  } catch {
+    // Vẫn xóa tokens dù API call thất bại
+    clearTokens();
+    return { success: true, message: 'Đăng xuất thành công' };
   }
 }
 

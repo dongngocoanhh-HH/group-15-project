@@ -1,4 +1,6 @@
 // frontend/src/services/userService.js
+import { getAccessToken } from './authService';
+
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000';
 
 async function readJson(res) {
@@ -7,7 +9,7 @@ async function readJson(res) {
 }
 
 /** PROFILE */
-export async function getProfile(token = localStorage.getItem('token')) {
+export async function getProfile(token = getAccessToken()) {
   try {
     const res = await fetch(`${API_URL}/api/users/profile`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -21,7 +23,7 @@ export async function getProfile(token = localStorage.getItem('token')) {
   }
 }
 
-export async function updateProfile(payload, token = localStorage.getItem('token')) {
+export async function updateProfile(payload, token = getAccessToken()) {
   try {
     const res = await fetch(`${API_URL}/api/users/profile`, {
       method: 'PUT',
@@ -45,7 +47,7 @@ export async function updateProfile(payload, token = localStorage.getItem('token
 }
 
 /** ADMIN */
-export async function adminGetUsers(token = localStorage.getItem('token')) {
+export async function adminGetUsers(token = getAccessToken()) {
   try {
     const res = await fetch(`${API_URL}/api/users`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -60,7 +62,7 @@ export async function adminGetUsers(token = localStorage.getItem('token')) {
   }
 }
 
-export async function adminDeleteUser(userId, token = localStorage.getItem('token')) {
+export async function adminDeleteUser(userId, token = getAccessToken()) {
   try {
     const res = await fetch(`${API_URL}/api/users/${userId}`, {
       method: 'DELETE',
@@ -76,7 +78,7 @@ export async function adminDeleteUser(userId, token = localStorage.getItem('toke
 }
 
 /** UPLOAD AVATAR */
-export async function uploadAvatar(file, token = localStorage.getItem('token')) {
+export async function uploadAvatar(file, token = getAccessToken()) {
   try {
     const form = new FormData();
     // field name phải là 'file' – khớp BE

@@ -9,11 +9,13 @@ import {
   Typography,
   Alert,
   CircularProgress,
+  Paper,
+  Divider,
 } from '@mui/material';
 import { getProfile, updateProfile, uploadAvatar } from '../services/userService';
+import { logout, getAccessToken, getUser } from '../services/authService';
 
-export default function Profile() {
-  const token = localStorage.getItem('token');
+export default function Profile({ onLogout }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: 'info', text: '' });
@@ -26,6 +28,21 @@ export default function Profile() {
   const inputRef = useRef(null);
 
   useEffect(() => {
+    // Kiểm tra xem user đã đăng nhập chưa
+    const token = getAccessToken();
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+
+    // Load thông tin user từ localStorage hoặc API
+    const cachedUser = getUser();
+    if (cachedUser) {
+      setName(cachedUser.name || '');
+      setEmail(cachedUser.email || '');
+      setAvatar(cachedUser.avatar || '');
+    }
+
     let ignore = false;
     (async () => {
       setLoading(true);
@@ -44,18 +61,30 @@ export default function Profile() {
       }
     })();
     return () => { ignore = true; };
-  }, [token]);
+  }, []);
 
   const handleUpdate = async (e) => {
     e.preventDefault();
     setSaving(true);
     setMsg({ type: 'info', text: '' });
+    const token = getAccessToken();
     const res = await updateProfile({ name, avatar }, token);
     setSaving(false);
     if (res.success) {
       setMsg({ type: 'success', text: res.message || 'Cập nhật thành công' });
     } else {
       setMsg({ type: 'error', text: res.message || 'Cập nhật thất bại' });
+    }
+  };
+
+  const handleLogout = async () => {
+    if (onLogout) {
+      // Dùng logout handler từ App.js để đồng bộ state
+      onLogout();
+    } else {
+      // Fallback nếu không có prop
+      await logout();
+      window.location.href = '/login';
     }
   };
 
@@ -67,6 +96,7 @@ export default function Profile() {
     setAvatarFile(file);
     setMsg({ type: 'info', text: '' });
 
+    const token = getAccessToken();
     // gọi API uploadAvatar (đã export từ userService)
     const res = await uploadAvatar(file, token);
     if (res.success && res.url) {
@@ -87,9 +117,14 @@ export default function Profile() {
 
   return (
     <Container maxWidth="sm" sx={{ py: 6 }}>
-      <Typography variant="h5" fontWeight={700} mb={2}>
-        Thông tin cá nhân
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5" fontWeight={700}>
+          Thông tin cá nhân
+        </Typography>
+        <Button variant="outlined" color="error" onClick={handleLogout}>
+          Đăng xuất
+        </Button>
+      </Box>
 
       {msg.text ? <Alert severity={msg.type} sx={{ mb: 2 }}>{msg.text}</Alert> : null}
 
@@ -143,6 +178,22 @@ export default function Profile() {
           {saving ? 'Đang lưu…' : 'CẬP NHẬT'}
         </Button>
       </Box>
+
+      <Divider sx={{ my: 4 }} />
+
+      <Paper elevation={2} sx={{ p: 3, bgcolor: '#f5f5f5' }}>
+        <Typography variant="h6" gutterBottom>
+          🔐 Refresh Token Demo
+        </Typography>
+        <Typography variant="body2" color="text.secondary" paragraph>
+          Access Token hết hạn sau 15 phút. Khi bạn gọi API sau khi token hết hạn, 
+          hệ thống sẽ tự động làm mới token bằng Refresh Token và thực hiện lại request.
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Refresh Token hết hạn sau 7 ngày. Nếu Refresh Token hết hạn, bạn sẽ được 
+          chuyển về trang đăng nhập.
+        </Typography>
+      </Paper>
     </Container>
   );
 }
