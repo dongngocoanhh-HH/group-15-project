@@ -4,12 +4,14 @@ import {
   Table, TableHead, TableRow, TableCell, TableBody,
   IconButton, Alert, CircularProgress, Button, Dialog, DialogTitle,
   DialogContent, DialogActions, MenuItem, Select, FormControl,
-  InputLabel, Chip, Checkbox, FormGroup, FormControlLabel, Grid, Card, CardContent
+  InputLabel, Chip, Checkbox, FormGroup, FormControlLabel, Grid, Card, CardContent,
+  Tabs, Tab, Pagination, TableContainer
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { 
   adminGetUsers, 
   adminDeleteUser, 
@@ -17,6 +19,7 @@ import {
   toggleUserStatus,
   getUserStats 
 } from '../services/userService';
+import { getActivityLogs, getActivityStats } from '../services/activityService';
 
 export default function Admin() {
   const [users, setUsers] = useState([]);
@@ -24,6 +27,16 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null);
   const [err, setErr] = useState(null);
+
+  // Tab management
+  const [currentTab, setCurrentTab] = useState(0);
+
+  // Activity logs state
+  const [logs, setLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsPagination, setLogsPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
+  const [logsFilter, setLogsFilter] = useState({ action: '', status: '' });
+  const [activityStats, setActivityStats] = useState(null);
 
   // Edit role dialog
   const [editDialog, setEditDialog] = useState(false);
@@ -62,6 +75,51 @@ export default function Admin() {
   }
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+
+  useEffect(() => {
+    if (currentTab === 1) {
+      loadActivityLogs();
+      loadActivityStats();
+    }
+    /* eslint-disable-next-line */
+  }, [currentTab, logsPagination.page, logsFilter]);
+
+  const loadActivityLogs = async () => {
+    setLogsLoading(true);
+    try {
+      const res = await getActivityLogs({
+        page: logsPagination.page,
+        limit: logsPagination.limit,
+        action: logsFilter.action || undefined,
+        status: logsFilter.status || undefined
+      });
+      
+      if (res.success) {
+        setLogs(res.data.logs);
+        setLogsPagination(prev => ({
+          ...prev,
+          total: res.data.pagination.total,
+          totalPages: res.data.pagination.totalPages
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading activity logs:', error);
+      setErr('Không thể tải logs');
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  const loadActivityStats = async () => {
+    try {
+      const res = await getActivityStats(7); // Last 7 days
+      if (res.success) {
+        setActivityStats(res.data);
+      }
+    } catch (error) {
+      console.error('Error loading activity stats:', error);
+    }
+  };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Xóa tài khoản này?')) return;
@@ -133,14 +191,36 @@ export default function Admin() {
     return 'default';
   };
 
+  const getActionColor = (action) => {
+    if (action === 'LOGIN' || action === 'REGISTER') return 'success';
+    if (action === 'LOGIN_FAILED') return 'error';
+    if (action === 'LOGOUT') return 'default';
+    if (action.includes('DELETE')) return 'error';
+    if (action.includes('UPDATE') || action.includes('CHANGED')) return 'warning';
+    return 'info';
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('vi-VN');
+  };
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 6 }}>
       <Typography variant="h4" gutterBottom fontWeight={700}>
         👑 Admin Dashboard
       </Typography>
 
+      {/* Tabs */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={currentTab} onChange={(e, newValue) => setCurrentTab(newValue)}>
+          <Tab label="Quản lý Users" />
+          <Tab label="Activity Logs" />
+        </Tabs>
+      </Box>
+
       {/* Stats Cards */}
-      {stats && (
+      {currentTab === 0 && stats && (
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} sm={6} md={3}>
             <Card>
@@ -193,8 +273,10 @@ export default function Admin() {
         </Grid>
       )}
 
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h5" gutterBottom>Quản lý người dùng</Typography>
+      {/* User Management Tab */}
+      {currentTab === 0 && (
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h5" gutterBottom>Quản lý người dùng</Typography>
 
         {loading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -272,7 +354,213 @@ export default function Admin() {
             Không có người dùng.
           </Typography>
         ))}
-      </Paper>
+        </Paper>
+      )}
+
+      {/* Activity Logs Tab */}
+      {currentTab === 1 && (
+        <Paper sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5">📊 Activity Logs</Typography>
+            <IconButton onClick={loadActivityLogs} color="primary" title="Refresh">
+              <RefreshIcon />
+            </IconButton>
+          </Box>
+
+          {/* Activity Stats */}
+          {activityStats && (
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card>
+                  <CardContent>
+                    <Typography color="text.secondary" variant="body2">
+                      Total Activities
+                    </Typography>
+                    <Typography variant="h5" fontWeight={700}>
+                      {activityStats.actionStats?.reduce((sum, item) => sum + item.count, 0) || 0}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {activityStats.period}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ bgcolor: 'error.light' }}>
+                  <CardContent>
+                    <Typography color="text.secondary" variant="body2">
+                      Failed Logins
+                    </Typography>
+                    <Typography variant="h5" fontWeight={700}>
+                      {activityStats.failedLogins || 0}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {activityStats.period}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ bgcolor: 'success.light' }}>
+                  <CardContent>
+                    <Typography color="text.secondary" variant="body2">
+                      Successful Actions
+                    </Typography>
+                    <Typography variant="h5" fontWeight={700}>
+                      {activityStats.statusStats?.find(s => s._id === 'SUCCESS')?.count || 0}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {activityStats.period}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ bgcolor: 'warning.light' }}>
+                  <CardContent>
+                    <Typography color="text.secondary" variant="body2">
+                      Active Users
+                    </Typography>
+                    <Typography variant="h5" fontWeight={700}>
+                      {activityStats.topUsers?.length || 0}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Most active
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          )}
+
+          {/* Filters */}
+          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Action</InputLabel>
+              <Select
+                value={logsFilter.action}
+                label="Action"
+                onChange={(e) => setLogsFilter(prev => ({ ...prev, action: e.target.value }))}
+              >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="LOGIN">LOGIN</MenuItem>
+                <MenuItem value="LOGIN_FAILED">LOGIN_FAILED</MenuItem>
+                <MenuItem value="LOGOUT">LOGOUT</MenuItem>
+                <MenuItem value="REGISTER">REGISTER</MenuItem>
+                <MenuItem value="PASSWORD_RESET_REQUEST">PASSWORD_RESET</MenuItem>
+                <MenuItem value="PROFILE_UPDATE">PROFILE_UPDATE</MenuItem>
+                <MenuItem value="USER_CREATED">USER_CREATED</MenuItem>
+                <MenuItem value="USER_DELETED">USER_DELETED</MenuItem>
+                <MenuItem value="ROLE_CHANGED">ROLE_CHANGED</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={logsFilter.status}
+                label="Status"
+                onChange={(e) => setLogsFilter(prev => ({ ...prev, status: e.target.value }))}
+              >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="SUCCESS">SUCCESS</MenuItem>
+                <MenuItem value="FAILED">FAILED</MenuItem>
+                <MenuItem value="WARNING">WARNING</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+
+          {/* Logs Table */}
+          {logsLoading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          )}
+
+          {!logsLoading && logs.length > 0 ? (
+            <>
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Time</TableCell>
+                      <TableCell>User</TableCell>
+                      <TableCell>Action</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>IP Address</TableCell>
+                      <TableCell>Details</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {logs.map((log, idx) => (
+                      <TableRow key={log._id || idx}>
+                        <TableCell sx={{ fontSize: '0.75rem' }}>
+                          {formatDate(log.timestamp)}
+                        </TableCell>
+                        <TableCell>
+                          {log.userId ? (
+                            <Box>
+                              <Typography variant="body2">
+                                {log.userId.username || log.userId.name || 'Unknown'}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {log.userId.email}
+                              </Typography>
+                            </Box>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">
+                              {log.email || 'Anonymous'}
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={log.action} 
+                            size="small" 
+                            color={getActionColor(log.action)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={log.status} 
+                            size="small" 
+                            color={log.status === 'SUCCESS' ? 'success' : 'error'}
+                            variant="outlined"
+                          />
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '0.75rem' }}>
+                          {log.ipAddress || '-'}
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '0.75rem', maxWidth: 200 }}>
+                          {log.details && Object.keys(log.details).length > 0 ? (
+                            <Typography variant="caption" sx={{ wordBreak: 'break-word' }}>
+                              {JSON.stringify(log.details).substring(0, 50)}...
+                            </Typography>
+                          ) : '-'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              {/* Pagination */}
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                <Pagination 
+                  count={logsPagination.totalPages} 
+                  page={logsPagination.page}
+                  onChange={(e, page) => setLogsPagination(prev => ({ ...prev, page }))}
+                  color="primary"
+                />
+              </Box>
+            </>
+          ) : (!logsLoading && (
+            <Typography sx={{ py: 2, color: 'text.secondary', textAlign: 'center' }}>
+              Không có logs.
+            </Typography>
+          ))}
+        </Paper>
+      )}
 
       {/* Edit Role Dialog */}
       <Dialog open={editDialog} onClose={() => setEditDialog(false)} maxWidth="sm" fullWidth>
