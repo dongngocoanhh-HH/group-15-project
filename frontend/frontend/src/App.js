@@ -1,7 +1,8 @@
 // frontend/src/App.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AppBar, Toolbar, Button, Box } from '@mui/material';
+import { useSelector, useDispatch } from 'react-redux';
 
 import Signup from './components/Signup';
 import Login from './components/Login';
@@ -10,64 +11,37 @@ import Admin from './pages/Admin';
 import Moderator from './pages/Moderator';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import ProtectedRoute from './components/ProtectedRoute';
 
+import { logoutUser } from './store/slices/authSlice';
 import { getProfile } from './services/userService';
-import { getAccessToken, getUser, logout } from './services/authService';
 
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [me, setMe] = useState(null);
-  const [token, setToken] = useState(getAccessToken());
+  const dispatch = useDispatch();
+  
+  // Get auth state from Redux
+  const { isAuthenticated, user, accessToken } = useSelector((state) => state.auth);
 
-  // Effect 1: Load user khi component mount hoặc location thay đổi
+  // Effect: Refresh user profile from server when token exists
   useEffect(() => {
-    // Load user info from localStorage first
-    const cachedUser = getUser();
-    const currentToken = getAccessToken();
-    
-    setToken(currentToken);
-    
-    if (cachedUser && currentToken) {
-      setMe(cachedUser);
-    } else {
-      setMe(null);
-    }
-
-    // Nếu có token, load lại profile từ server
-    if (currentToken) {
+    if (accessToken && isAuthenticated) {
       let ignore = false;
       async function loadMe() {
         try {
-          const res = await getProfile(currentToken);
-          if (!ignore) setMe(res?.user || null);
-        } catch {
-          if (!ignore) setMe(null);
+          await getProfile(accessToken);
+        } catch (error) {
+          console.error('Failed to refresh profile:', error);
         }
       }
       loadMe();
       return () => { ignore = true; };
     }
-  }, [location]); // Re-run khi location thay đổi (sau login/logout)
+  }, [location, accessToken, isAuthenticated]);
 
-  // Effect 2: Listen for storage changes (multi-tab support)
-  useEffect(() => {
-    const handleStorageChange = () => {
-      setToken(getAccessToken());
-      setMe(getUser());
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => { 
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
-  const handleLogout = async () => {
-    await logout();
-    // Reset state TRƯỚC KHI navigate
-    setToken(null);
-    setMe(null);
-    // Dùng navigate thay vì window.location.href để giữ React state
+  const handleLogout = () => {
+    dispatch(logoutUser());
     navigate('/login', { replace: true });
   };
 
@@ -78,26 +52,26 @@ function AppContent() {
         <Toolbar sx={{ gap: 2 }}>
           <Box sx={{ flexGrow: 1, fontWeight: 700 }}>Group 15 Project</Box>
 
-          {!token && (
+          {!isAuthenticated && (
             <>
               <Button color="inherit" component={Link} to="/signup">Đăng ký</Button>
               <Button color="inherit" component={Link} to="/login">Đăng nhập</Button>
             </>
           )}
 
-          {token && (
+          {isAuthenticated && (
             <>
               <Button color="inherit" component={Link} to="/profile">Profile</Button>
               <Button color="inherit" component={Link} to="/forgot-password">Quên mật khẩu</Button>
               <Button color="inherit" component={Link} to="/reset-password">Đổi mật khẩu</Button>
 
               {/* Admin-only button */}
-              {me?.role === 'admin' && (
+              {user?.role === 'admin' && (
                 <Button color="inherit" component={Link} to="/admin">👑 Admin</Button>
               )}
               
               {/* Moderator button */}
-              {(me?.role === 'moderator' || me?.role === 'admin') && (
+              {(user?.role === 'moderator' || user?.role === 'admin') && (
                 <Button color="inherit" component={Link} to="/moderator">🛡️ Moderator</Button>
               )}
               
@@ -111,17 +85,38 @@ function AppContent() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/profile" element={token ? <Profile onLogout={handleLogout} /> : <Navigate to="/login" replace />} />
+        
+        {/* Protected Routes */}
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute>
+              <Profile onLogout={handleLogout} />
+            </ProtectedRoute>
+          } 
+        />
+        
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Admin />
+            </ProtectedRoute>
+          } 
+        />
+        
+        <Route 
+          path="/moderator" 
+          element={
+            <ProtectedRoute allowedRoles={['moderator', 'admin']}>
+              <Moderator />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* Public Routes */}
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route
-          path="/admin"
-          element={me?.role === 'admin' ? <Admin /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/moderator"
-          element={(me?.role === 'moderator' || me?.role === 'admin') ? <Moderator /> : <Navigate to="/login" replace />}
-        />
       </Routes>
     </>
   );
