@@ -1,0 +1,382 @@
+{
+  "info": {
+    "name": "Activity Logging & Rate Limiting API",
+    "description": "Collection for testing Activity Logging and Rate Limiting features - Group 15 Project",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login (Test Rate Limit)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test rate limiting - should fail after 5 attempts",
+                  "pm.test(\"Response is valid\", function () {",
+                  "    pm.response.to.have.status.oneOf([200, 400, 429]);",
+                  "});",
+                  "",
+                  "// After 5 failed attempts, should get 429",
+                  "if (pm.response.code === 429) {",
+                  "    pm.test(\"Rate limit message\", function () {",
+                  "        var jsonData = pm.response.json();",
+                  "        pm.expect(jsonData.message).to.include('Quá nhiều');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"wrong@email.com\",\n  \"password\": \"wrongpassword\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:4000/api/auth/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "4000",
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Test login with wrong credentials multiple times to trigger rate limit. After 5 failed attempts in 15 minutes, should return 429 error."
+          },
+          "response": []
+        },
+        {
+          "name": "Login Success (Creates Log)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "",
+                  "pm.test(\"Login successful\", function () {",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "// Save access token for next requests",
+                  "if (jsonData.accessToken) {",
+                  "    pm.environment.set(\"accessToken\", jsonData.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@test.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:4000/api/auth/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "4000",
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Successful login creates a LOGIN log entry in the database."
+          },
+          "response": []
+        },
+        {
+          "name": "Register (Creates Log)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@test.com\",\n  \"password\": \"password123\",\n  \"name\": \"New User\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:4000/api/auth/signup",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "4000",
+              "path": ["api", "auth", "signup"]
+            },
+            "description": "User registration creates a REGISTER log entry."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Activity Logs",
+      "item": [
+        {
+          "name": "Get All Activity Logs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "",
+                  "pm.test(\"Request successful\", function () {",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test(\"Has logs data\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property('logs');",
+                  "    pm.expect(jsonData.data).to.have.property('pagination');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:4000/api/activity/logs?page=1&limit=20",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "4000",
+              "path": ["api", "activity", "logs"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get paginated list of all activity logs. Admin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Logs with Action Filter",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:4000/api/activity/logs?action=LOGIN&page=1&limit=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "4000",
+              "path": ["api", "activity", "logs"],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "LOGIN"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Filter logs by action type (LOGIN, REGISTER, LOGOUT, etc.)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Failed Login Attempts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:4000/api/activity/logs?action=LOGIN_FAILED&status=FAILED&limit=50",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "4000",
+              "path": ["api", "activity", "logs"],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "LOGIN_FAILED"
+                },
+                {
+                  "key": "status",
+                  "value": "FAILED"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Get all failed login attempts for security monitoring."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User's Activity Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:4000/api/activity/logs/user/:userId?limit=30",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "4000",
+              "path": ["api", "activity", "logs", "user", ":userId"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "30"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "USER_ID_HERE"
+                }
+              ]
+            },
+            "description": "Get activity logs for a specific user. Replace :userId with actual user ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Activity Statistics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "",
+                  "pm.test(\"Has statistics\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property('actionStats');",
+                  "    pm.expect(jsonData.data).to.have.property('statusStats');",
+                  "    pm.expect(jsonData.data).to.have.property('dailyStats');",
+                  "    pm.expect(jsonData.data).to.have.property('topUsers');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:4000/api/activity/stats?days=7",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "4000",
+              "path": ["api", "activity", "stats"],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "7"
+                }
+              ]
+            },
+            "description": "Get activity statistics for the last N days (default 7)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User Actions (Create Logs)",
+      "item": [
+        {
+          "name": "Update Profile (Creates Log)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:4000/api/users/profile",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "4000",
+              "path": ["api", "users", "profile"]
+            },
+            "description": "Profile update creates a PROFILE_UPDATE log entry."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

@@ -1,0 +1,832 @@
+{
+	"info": {
+		"_postman_id": "redux-protected-routes-api",
+		"name": "Redux & Protected Routes API Tests",
+		"description": "Test các API endpoint cho Hoạt động 6 - Redux Toolkit & Protected Routes\n\n**Yêu cầu:**\n- Backend chạy ở http://localhost:5000\n- MongoDB đã có users (chạy `node seedUsers.js`)\n\n**Test Flow:**\n1. Login với user thường → Lấy accessToken\n2. Login với admin → Lấy accessToken\n3. Access protected endpoints với token\n4. Test role-based access control\n5. Logout và revoke token",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Authentication APIs",
+			"item": [
+				{
+					"name": "1.1 Login - User Thường",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Test response status",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Parse response",
+									"var jsonData = pm.response.json();",
+									"",
+									"// Test response structure",
+									"pm.test(\"Response has success=true\", function () {",
+									"    pm.expect(jsonData.success).to.eql(true);",
+									"});",
+									"",
+									"pm.test(\"Response contains accessToken\", function () {",
+									"    pm.expect(jsonData).to.have.property('accessToken');",
+									"    pm.expect(jsonData.accessToken).to.be.a('string');",
+									"});",
+									"",
+									"pm.test(\"Response contains refreshToken\", function () {",
+									"    pm.expect(jsonData).to.have.property('refreshToken');",
+									"});",
+									"",
+									"pm.test(\"Response contains user object\", function () {",
+									"    pm.expect(jsonData).to.have.property('user');",
+									"    pm.expect(jsonData.user).to.have.property('email');",
+									"    pm.expect(jsonData.user).to.have.property('role');",
+									"});",
+									"",
+									"pm.test(\"User role is 'user'\", function () {",
+									"    pm.expect(jsonData.user.role).to.eql('user');",
+									"});",
+									"",
+									"// Save tokens to environment for later use",
+									"if (jsonData.accessToken) {",
+									"    pm.environment.set(\"user_accessToken\", jsonData.accessToken);",
+									"}",
+									"if (jsonData.refreshToken) {",
+									"    pm.environment.set(\"user_refreshToken\", jsonData.refreshToken);",
+									"}",
+									"",
+									"console.log(\"✅ User Login: accessToken saved to environment\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login với user thường để test protected routes.\n\n**Expected:**\n- Status: 200\n- Response: { success: true, accessToken, refreshToken, user: { role: 'user' } }\n- AccessToken được lưu vào environment variable"
+					},
+					"response": []
+				},
+				{
+					"name": "1.2 Login - Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.test(\"Response has success=true\", function () {",
+									"    pm.expect(jsonData.success).to.eql(true);",
+									"});",
+									"",
+									"pm.test(\"Response contains tokens\", function () {",
+									"    pm.expect(jsonData).to.have.property('accessToken');",
+									"    pm.expect(jsonData).to.have.property('refreshToken');",
+									"});",
+									"",
+									"pm.test(\"User role is 'admin'\", function () {",
+									"    pm.expect(jsonData.user.role).to.eql('admin');",
+									"});",
+									"",
+									"// Save admin tokens",
+									"if (jsonData.accessToken) {",
+									"    pm.environment.set(\"admin_accessToken\", jsonData.accessToken);",
+									"}",
+									"if (jsonData.refreshToken) {",
+									"    pm.environment.set(\"admin_refreshToken\", jsonData.refreshToken);",
+									"}",
+									"",
+									"console.log(\"✅ Admin Login: accessToken saved to environment\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"admin123\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login với admin để test admin-only routes."
+					},
+					"response": []
+				},
+				{
+					"name": "1.3 Login - Sai mật khẩu (Should Fail)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401 or 400\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([400, 401]);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.test(\"Response has success=false\", function () {",
+									"    pm.expect(jsonData.success).to.eql(false);",
+									"});",
+									"",
+									"pm.test(\"Response has error message\", function () {",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"    pm.expect(jsonData.message).to.be.a('string');",
+									"});",
+									"",
+									"console.log(\"✅ Invalid login correctly rejected\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"wrongpassword\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Test error handling khi login với sai mật khẩu.\n\n**Expected:**\n- Status: 401\n- Response: { success: false, message: '...' }"
+					},
+					"response": []
+				},
+				{
+					"name": "1.4 Signup - Email mới",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 or 200\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.test(\"Response has success=true\", function () {",
+									"    pm.expect(jsonData.success).to.eql(true);",
+									"});",
+									"",
+									"pm.test(\"User created with default role\", function () {",
+									"    pm.expect(jsonData.user).to.have.property('role');",
+									"    pm.expect(jsonData.user.role).to.be.oneOf(['user', 'moderator']);",
+									"});",
+									"",
+									"console.log(\"✅ Signup successful\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"newuser{{$randomInt}}@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"New User {{$randomInt}}\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/auth/signup",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"auth",
+								"signup"
+							]
+						},
+						"description": "Test signup với email mới (random)."
+					},
+					"response": []
+				}
+			],
+			"description": "Test các API authentication cơ bản: login, signup, error handling."
+		},
+		{
+			"name": "2. Protected Routes - User Access",
+			"item": [
+				{
+					"name": "2.1 Get Profile - User Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.test(\"Response contains user data\", function () {",
+									"    pm.expect(jsonData).to.have.property('email');",
+									"    pm.expect(jsonData).to.have.property('role');",
+									"});",
+									"",
+									"console.log(\"✅ User can access their own profile\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:5000/api/users/profile",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"users",
+								"profile"
+							]
+						},
+						"description": "User thường truy cập profile của họ (protected route).\n\n**Expected:**\n- Status: 200\n- User data returned"
+					},
+					"response": []
+				},
+				{
+					"name": "2.2 Access Admin Route - User Token (Should Fail)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 403 Forbidden\", function () {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.test(\"Response has error message\", function () {",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"});",
+									"",
+									"console.log(\"✅ User correctly denied access to admin route\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:5000/api/admin/users",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"admin",
+								"users"
+							]
+						},
+						"description": "User thường cố truy cập admin route → Phải bị chặn.\n\n**Expected:**\n- Status: 403 Forbidden\n- Error message về insufficient permissions"
+					},
+					"response": []
+				},
+				{
+					"name": "2.3 Access Activity Logs - User Token (Should Fail)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 403 Forbidden\", function () {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"",
+									"console.log(\"✅ User denied access to activity logs\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:5000/api/activity/logs",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"activity",
+								"logs"
+							]
+						},
+						"description": "User thường không được xem activity logs (Admin only).\n\n**Expected:**\n- Status: 403"
+					},
+					"response": []
+				}
+			],
+			"description": "Test protected routes với User token - kiểm tra role-based access control."
+		},
+		{
+			"name": "3. Protected Routes - Admin Access",
+			"item": [
+				{
+					"name": "3.1 Get All Users - Admin Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.test(\"Response is array of users\", function () {",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"    if (jsonData.length > 0) {",
+									"        pm.expect(jsonData[0]).to.have.property('email');",
+									"        pm.expect(jsonData[0]).to.have.property('role');",
+									"    }",
+									"});",
+									"",
+									"console.log(\"✅ Admin can access all users\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:5000/api/admin/users",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"admin",
+								"users"
+							]
+						},
+						"description": "Admin truy cập danh sách users.\n\n**Expected:**\n- Status: 200\n- Array of users"
+					},
+					"response": []
+				},
+				{
+					"name": "3.2 Get Activity Logs - Admin Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.test(\"Response has logs array\", function () {",
+									"    pm.expect(jsonData).to.have.property('logs');",
+									"    pm.expect(jsonData.logs).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Response has pagination info\", function () {",
+									"    pm.expect(jsonData).to.have.property('total');",
+									"    pm.expect(jsonData).to.have.property('page');",
+									"    pm.expect(jsonData).to.have.property('totalPages');",
+									"});",
+									"",
+									"console.log(\"✅ Admin can access activity logs\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:5000/api/activity/logs?page=1&limit=10",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"activity",
+								"logs"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Admin truy cập activity logs với pagination.\n\n**Expected:**\n- Status: 200\n- { logs: [...], total, page, totalPages }"
+					},
+					"response": []
+				},
+				{
+					"name": "3.3 Get Admin Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.test(\"User is admin\", function () {",
+									"    pm.expect(jsonData.role).to.eql('admin');",
+									"});",
+									"",
+									"console.log(\"✅ Admin can access profile\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:5000/api/users/profile",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"users",
+								"profile"
+							]
+						},
+						"description": "Admin cũng có thể truy cập profile của họ."
+					},
+					"response": []
+				}
+			],
+			"description": "Test admin có thể truy cập tất cả protected routes."
+		},
+		{
+			"name": "4. Token Management",
+			"item": [
+				{
+					"name": "4.1 Refresh Token - User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.test(\"Response has new accessToken\", function () {",
+									"    pm.expect(jsonData).to.have.property('accessToken');",
+									"    pm.expect(jsonData.accessToken).to.be.a('string');",
+									"});",
+									"",
+									"// Update environment with new token",
+									"if (jsonData.accessToken) {",
+									"    pm.environment.set(\"user_accessToken\", jsonData.accessToken);",
+									"}",
+									"",
+									"console.log(\"✅ Token refreshed successfully\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{user_refreshToken}}\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/auth/refresh",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"auth",
+								"refresh"
+							]
+						},
+						"description": "Test refresh token để lấy accessToken mới.\n\n**Expected:**\n- Status: 200\n- New accessToken returned"
+					},
+					"response": []
+				},
+				{
+					"name": "4.2 Logout - User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.test(\"Logout successful\", function () {",
+									"    pm.expect(jsonData.success).to.eql(true);",
+									"});",
+									"",
+									"console.log(\"✅ User logged out, token revoked\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{user_refreshToken}}\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/auth/logout",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Test logout - revoke refresh token.\n\n**Expected:**\n- Status: 200\n- Token invalidated"
+					},
+					"response": []
+				},
+				{
+					"name": "4.3 Access with No Token (Should Fail)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401 Unauthorized\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.test(\"Error message about missing token\", function () {",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"});",
+									"",
+									"console.log(\"✅ Correctly denied access without token\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/api/users/profile",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"users",
+								"profile"
+							]
+						},
+						"description": "Truy cập protected route KHÔNG có token.\n\n**Expected:**\n- Status: 401\n- Error message"
+					},
+					"response": []
+				},
+				{
+					"name": "4.4 Access with Invalid Token (Should Fail)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401 Unauthorized\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"console.log(\"✅ Invalid token rejected\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer invalid_token_string",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:5000/api/users/profile",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"users",
+								"profile"
+							]
+						},
+						"description": "Truy cập với token không hợp lệ.\n\n**Expected:**\n- Status: 401"
+					},
+					"response": []
+				}
+			],
+			"description": "Test token lifecycle: refresh, logout, validation."
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		}
+	]
+}

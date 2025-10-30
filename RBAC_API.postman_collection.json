@@ -1,0 +1,497 @@
+{
+  "info": {
+    "name": "RBAC API Testing",
+    "description": "Collection để test Role-Based Access Control APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login as Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{API_URL}}/api/auth/login",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login as Moderator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"moderator@example.com\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{API_URL}}/api/auth/login",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login as User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user1@example.com\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{API_URL}}/api/auth/login",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Admin APIs",
+      "item": [
+        {
+          "name": "Get All Users (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "description": "Admin access token"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Role to Moderator",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"moderator\",\n  \"permissions\": [\"manage_users\", \"view_reports\"]\n}"
+            },
+            "url": {
+              "raw": "{{API_URL}}/api/users/{{user_id}}/role",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "{{user_id}}", "role"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Role to Admin",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{API_URL}}/api/users/{{user_id}}/role",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "{{user_id}}", "role"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle User Status (Deactivate)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users/{{user_id}}/toggle-status",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "{{user_id}}", "toggle-status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users/{{user_id}}",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "{{user_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Admin/Moderator APIs",
+      "item": [
+        {
+          "name": "Get User Stats (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users/stats",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "stats"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Stats (Moderator)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{moderator_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users/stats",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "stats"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Moderator APIs (with Permission)",
+      "item": [
+        {
+          "name": "Get Managed Users (All)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{moderator_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users/managed",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "managed"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Managed Users (Filter by Role)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{moderator_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users/managed?role=user",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "managed"],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "user"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Managed Users (Filter by Status)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{moderator_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users/managed?isActive=true",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "managed"],
+              "query": [
+                {
+                  "key": "isActive",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Managed Users (Search)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{moderator_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users/managed?search=admin",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "managed"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "admin"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Permission Tests (Should Fail)",
+      "item": [
+        {
+          "name": "User Try Admin API (Forbidden)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Moderator Try Update Role (Forbidden)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{moderator_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{API_URL}}/api/users/{{user_id}}/role",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "{{user_id}}", "role"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User Try Stats API (Forbidden)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users/stats",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "stats"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Moderator Without Permission (Should Fail)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{moderator_no_permission_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users/managed",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "managed"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Validation Tests",
+      "item": [
+        {
+          "name": "Invalid Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"superadmin\"\n}"
+            },
+            "url": {
+              "raw": "{{API_URL}}/api/users/{{user_id}}/role",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "{{user_id}}", "role"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid Permission",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"moderator\",\n  \"permissions\": [\"invalid_permission\"]\n}"
+            },
+            "url": {
+              "raw": "{{API_URL}}/api/users/{{user_id}}/role",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "{{user_id}}", "role"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "API_URL",
+      "value": "http://localhost:4000",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "moderator_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
