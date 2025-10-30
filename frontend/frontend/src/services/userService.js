@@ -91,8 +91,10 @@ export async function uploadAvatar(file, token = getAccessToken()) {
       credentials: 'include',
     });
     const data = await readJson(res);
-    if (!res.ok) return { success: false, message: data?.message || 'Upload thất bại' };
-    return { success: true, url: data.url, user: data.user, message: data.message || 'Upload thành công' };
+  if (!res.ok) return { success: false, message: data?.message || 'Upload thất bại' };
+  // backend may return avatarUrl, url or user.avatar depending on implementation
+  const avatarUrl = data.avatarUrl || data.url || (data.user && data.user.avatar) || null;
+  return { success: true, url: avatarUrl, user: data.user, message: data.message || 'Upload thành công' };
   } catch (e) {
     console.error('uploadAvatar error:', e);
     return { success: false, message: 'Lỗi kết nối server' };

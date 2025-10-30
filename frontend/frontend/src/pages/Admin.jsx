@@ -3,7 +3,7 @@ import {
   Container, Paper, Typography, Box,
   Table, TableHead, TableRow, TableCell, TableBody,
   IconButton, Alert, CircularProgress, Button, Dialog, DialogTitle,
-  DialogContent, DialogActions, TextField, MenuItem, Select, FormControl,
+  DialogContent, DialogActions, MenuItem, Select, FormControl,
   InputLabel, Chip, Checkbox, FormGroup, FormControlLabel, Grid, Card, CardContent
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -17,7 +17,6 @@ import {
   toggleUserStatus,
   getUserStats 
 } from '../services/userService';
-import { getAccessToken } from '../services/authService';
 
 export default function Admin() {
   const [users, setUsers] = useState([]);

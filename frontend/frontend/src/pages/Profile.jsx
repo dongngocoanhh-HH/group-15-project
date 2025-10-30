@@ -23,6 +23,7 @@ export default function Profile({ onLogout }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [avatar, setAvatar] = useState('');
+  // eslint-disable-next-line no-unused-vars
   const [avatarFile, setAvatarFile] = useState(null);
 
   const inputRef = useRef(null);
@@ -99,9 +100,11 @@ export default function Profile({ onLogout }) {
     const token = getAccessToken();
     // gọi API uploadAvatar (đã export từ userService)
     const res = await uploadAvatar(file, token);
-    if (res.success && res.url) {
-      setAvatar(res.url); // gán URL mới vào form
-      setMsg({ type: 'success', text: 'Upload thành công' });
+    if (res.success) {
+      // backend may return URL in several places; userService normalizes to res.url
+      const newUrl = res.url || (res.user && res.user.avatar) || '';
+      if (newUrl) setAvatar(newUrl); // gán URL mới vào form
+      setMsg({ type: 'success', text: res.message || 'Upload thành công' });
     } else {
       setMsg({ type: 'error', text: res.message || 'Lỗi upload ảnh' });
     }
